@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Form
 import openai
-import pandas
 import uvicorn
 from dotenv import load_dotenv
 from typing_extensions import override
