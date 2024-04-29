@@ -64,7 +64,7 @@
             var message = document.getElementById("message").value;
             const formdata = new FormData();
             formdata.append("question", message);
-            var response = await fetch('http://127.0.0.1:8000/ask_question/', {
+            var response = await fetch('https://housing-helper.onrender.com/ask_question', {
                 method: 'POST',
                 body: formdata
             });
