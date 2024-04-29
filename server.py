@@ -90,7 +90,6 @@ async def ask_question(question: str = Form(...)):
       """
   
   async def handlestream(stream): 
-    bold = 0
     buffer = ""
     startbuffer = False
     for event in stream:
