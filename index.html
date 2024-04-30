@@ -58,28 +58,31 @@
         <input type="text" id="message" placeholder="Type your message here">
         <button style="margin-top: 10px;" onclick="sendMessage()">Send Message</button>
     </div>
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+  <script>
 
+    // Enable pusher logging - don't include this in production
+    Pusher.logToConsole = true;
+
+    var pusher = new Pusher('f1aa2008be7ccd59a34a', {
+      cluster: 'mt1'
+    });
+
+    var channel = pusher.subscribe('my-channel');
+    channel.bind('my-event', function(data) {
+    document.getElementById("result").innerHTML += data.message;
+    });
+  </script>
     <script>
         async function sendMessage() {
+            document.getElementById("result").innerHTML = ""
             var message = document.getElementById("message").value;
             const formdata = new FormData();
             formdata.append("question", message);
-            var response = await fetch('https://housing-helper.onrender.com/ask_question', {
+            fetch('http://127.0.0.1:8000/ask_question', {
                 method: 'POST',
                 body: formdata
             });
-
-            var reader = response.body.getReader();
-            var decoder = new TextDecoder('utf-8');
-
-            reader.read().then(function processResult(result) {
-                if (result.done) return;
-                let token = decoder.decode(result.value);
-                document.getElementById("result").innerHTML += token;
-                
-                return reader.read().then(processResult);
-            });
-
         }
     </script>
 

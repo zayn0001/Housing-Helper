@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Form
+from fastapi import FastAPI, Form, Response
 import openai
 import uvicorn
 from dotenv import load_dotenv
@@ -88,35 +88,6 @@ async def ask_question(question: str = Form(...)):
       return {"answer":cleaned_string, "files":pdffiles}
 
       """
-  
-  async def handlestream(stream): 
-    buffer = ""
-    startbuffer = False
-    for event in stream:
-      if event.event =="thread.message.delta":
-        value = event.data.delta.content[0].text.value
-
-        value = value.replace("\n","<br>")
-        if "**" in value:
-          if not startbuffer:
-            buffer = value.replace("**","<b>")
-            startbuffer = True
-            continue
-          else:
-            value = value.replace("**","</b>")
-            buffer += value
-            startbuffer = False
-            yield buffer
-            continue
-
-        if startbuffer:
-          buffer+=value
-          continue
-
-        cleaned_string = re.sub(r'【.*?】', '', value)
-
-    
-        yield cleaned_string
 
   stream = client.beta.threads.runs.create(
     thread_id=thread.id,
@@ -125,7 +96,37 @@ async def ask_question(question: str = Form(...)):
     stream=True
     )
   
-  return StreamingResponse(handlestream(stream))
+  buffer = ""
+  startbuffer = False
+  for event in stream:
+    if event.event =="thread.message.delta":
+      value = event.data.delta.content[0].text.value
+
+      value = value.replace("\n","<br>")
+      if "**" in value:
+        if not startbuffer:
+          buffer = value.replace("**","<b>")
+          startbuffer = True
+          continue
+        else:
+          value = value.replace("**","</b>")
+          buffer += value
+          startbuffer = False
+          print(buffer, end="",flush=True)
+          pusher_client.trigger('my-channel', 'my-event', {'message': buffer})
+          continue
+
+      if startbuffer:
+        buffer+=value
+        continue
+      
+      cleaned_string = re.sub(r'【.*?】', '', value)
+      print(cleaned_string, end="",flush=True)
+  
+      pusher_client.trigger('my-channel', 'my-event', {'message': cleaned_string}) 
+
+  return {"stream":"done"}
+  
     
 
   
