@@ -6,7 +6,7 @@ from typing_extensions import override
 from fastapi.middleware.cors import CORSMiddleware
 import re
 from openai import AssistantEventHandler
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse
 import pusher
 
 pusher_client = pusher.Pusher(
@@ -16,6 +16,8 @@ pusher_client = pusher.Pusher(
   cluster='mt1',
   ssl=True
 )
+
+
 class EventHandler(AssistantEventHandler):    
   @override
   def on_text_delta(self, delta, snapshot):
@@ -33,18 +35,22 @@ app.add_middleware(
     allow_headers=["*"],
 ) 
 
+
+vectorstorepdfs = {'file-5IED2QKjBtQPncyo29sb3bd2':'Home Maintenance for Dummies',
+ 'file-DNbDePyPmU1C9ZhLe56QWAdp':"Packet of Home Maintenance Information",
+ 'file-TYvB0JEnYUSigMhDKeWE6kUy':"HOMEOWNER MAINTENANCE MANUAL - National Home Warranty",
+ 'file-VNdRZp7AmPBZm8iBHcdKeREJ':"HOMEOWNER MAINTENANCE MANUAL - StrucSure Home Warranty",
+ 'file-MH3jm6gmvedNnx5TwwTdYrza': "HOME MAINTENANCE STUDENT MANUAL - Northwest Territories Housing Corporation"}
+
+
 client = openai.OpenAI()
 
 vectorsestoreid = "vs_oyCadoQAfTDgr6r1OwLbiZPr"
 
-vectorstorepdfs = {'file-5IED2QKjBtQPncyo29sb3bd2':'Home Maintenance For Dummies',
- 'file-DNbDePyPmU1C9ZhLe56QWAdp':'Packet of Home Maintenance Information',
- 'file-TYvB0JEnYUSigMhDKeWE6kUy':'Homeowner Maintenance Manual - National Home Warranty',
- 'file-VNdRZp7AmPBZm8iBHcdKeREJ':'Homeowner Maintenance Manual - StrucSure Home Warranty',
- 'file-MH3jm6gmvedNnx5TwwTdYrza':'Home Maintenance Student Manual - Northwest Territories Housing Corporation'}
-
 @app.post("/ask_question/")
-async def ask_question(question: str = Form(...)):
+def ask_question(question: str = Form(...)):
+
+  
 
   assistant = client.beta.assistants.create(
     instructions="You are a helpful housing support assistant and you answer questions based on the files provided to you.",
@@ -96,20 +102,23 @@ async def ask_question(question: str = Form(...)):
     stream=True
     )
   
+  
+  
   buffer = ""
   startbuffer = False
   for event in stream:
+    print(event)
     if event.event =="thread.message.delta":
       value = event.data.delta.content[0].text.value
 
-      value = value.replace("\n","<br>")
+      value = value.replace("\n","<br/>")
       if "**" in value:
         if not startbuffer:
-          buffer = value.replace("**","<b>")
+          buffer = value.replace("**","<strong>")
           startbuffer = True
           continue
         else:
-          value = value.replace("**","</b>")
+          value = value.replace("**","</strong>")
           buffer += value
           startbuffer = False
           print(buffer, end="",flush=True)
@@ -125,7 +134,26 @@ async def ask_question(question: str = Form(...)):
   
       pusher_client.trigger('my-channel', 'my-event', {'message': cleaned_string}) 
 
-  return {"stream":"done"}
+  
+  messages = client.beta.threads.messages.list(
+          thread_id=thread.id
+  )
+  content = messages.data[0].content[0].text
+  annotations = content.annotations
+  value = content.value
+  filesaccessed = set()
+  for annot in annotations:
+    file_id = annot.file_citation.file_id
+    filename = vectorstorepdfs[file_id]
+    filesaccessed.add(filename)
+  pdffiles = []
+  for file in filesaccessed:
+      pdffiles.append({"name":file})
+
+  print(pdffiles)
+
+  
+  return pdffiles
   
     
 
